@@ -2,6 +2,10 @@ import { UI_ELEMENTS, URLS, changeDetailContent, changeHeaderContent, addNewFore
 import { storage } from "./module/storage.js"
 import { TABS } from "./module/tabs.js"
 
+const ERRORS = {
+	invalidCity: "Cannot read properties of undefined (reading 'temp')"
+}
+
 TABS.addEventTabChange();
 let setCities = storage.getFavoriteCities() || [];
 render()
@@ -29,50 +33,41 @@ function render() {
 	getForecast(storage.getCurrentCity());
 }
 
-function getWeather(cityName) {
-	let url = URLS.weatherDataUrl(cityName)
-	let weatherData;
-	fetch(url)
-		.then(response => {
-			if (response.ok) {
-				return response.json()
-			}
-			else {
-				throw new Error("Server not work.");
-			}
-		})
-		.then(data => {
-			weatherData = data;
-		})
-		.then(() => {
-			changeHeaderContent(cityName, weatherData);
-			changeDetailContent(cityName, weatherData);
-		})
-		.catch(alert)
+async function getWeather(cityName) {
+	let url = URLS.weatherDataUrl(cityName);
+	try {
+		let response = await fetch(url);
+		if (response.ok) {
+			let data = await response.json();
+			changeHeaderContent(cityName, data);
+			changeDetailContent(cityName, data);
+		}
+		else if (response.status === 404) {
+			throw new Error("City not found");
+		}
+	} catch (error) {
+		alert(error.message);
+	}
 }
 
-function getForecast(cityName) {
+
+async function getForecast(cityName) {
 	UI_ELEMENTS.FORECAST_CONTAINER.replaceChildren();
 	UI_ELEMENTS.FORECAST_CITY.textContent = cityName;
 	let url = URLS.weatherForecastUrl(cityName);
-	let forecastData;
-	fetch(url)
-		.then(response => response.json())
-		.then(result => {
-			forecastData = result.list;
-		})
-		.then(() => {
-			forecastData.forEach((obj) => {
-				addNewForecastElem(
-					obj.main.temp,
-					obj.main.feels_like,
-					dateConvertor(obj.dt),
-					timeConverter(obj.dt),
-					obj.weather[0].main,
-					obj.weather[0].icon
-				)
-			})
-		})
+	let respone = await fetch(url);
+	let data = await respone.json();
+	let forecastList = data.list;
+	forecastList.forEach(obj => {
+		addNewForecastElem(
+			obj.main.temp,
+			obj.main.feels_like,
+			dateConvertor(obj.dt),
+			timeConverter(obj.dt),
+			obj.weather[0].main,
+			obj.weather[0].icon
+		)
+	});
 }
 
 function addCityToFav(cityName) {
